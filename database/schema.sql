@@ -1,0 +1,33 @@
+CREATE DATABASE IF NOT EXISTS vehicle_service_db;
+USE vehicle_service_db;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS vehicles (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  model VARCHAR(100) NOT NULL,
+  number VARCHAR(50) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  purchase_date DATE NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS services (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  vehicle_id INT NOT NULL,
+  service_type VARCHAR(100) NOT NULL,
+  custom_service_type VARCHAR(100),
+  cost DECIMAL(10, 2) NOT NULL,
+  date DATE NOT NULL,
+  notes TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+);
