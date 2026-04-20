@@ -57,7 +57,7 @@
   <div id="register-card" class="auth-card">
     <div class="auth-card-header">
       <h1>Create account</h1>
-      <p>Start managing your vehicles today</p>
+      <p>Start managing your garage today</p>
     </div>
     <form id="register-form" novalidate>
       <div class="form-row">
@@ -168,7 +168,7 @@
       <div class="topbar-right">
         <div class="topbar-search">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" placeholder="Search..." />
+          <input type="text" id="global-search" placeholder="Search by customer email..." />
         </div>
         <button class="notif-btn">
           <i class="fa-regular fa-bell"></i>
@@ -254,8 +254,8 @@
       <section id="page-vehicles" class="page">
         <div class="section-header">
           <div>
-            <h2>My Vehicles</h2>
-            <p class="subtitle">Manage your registered fleet</p>
+            <h2>Customer Vehicles</h2>
+            <p class="subtitle">Manage the garage's registered customer vehicles</p>
           </div>
           <button class="btn-primary btn-sm" onclick="showModal('add-vehicle-modal')">
             <i class="fa-solid fa-plus"></i> Add Vehicle
@@ -290,6 +290,13 @@
           <div class="service-form-panel">
             <div class="panel-header"><i class="fa-solid fa-clipboard-list"></i> Log New Service</div>
             <form id="inline-service-form" novalidate>
+              <div class="form-group">
+                <label>Customer Email</label>
+                <div class="input-wrap">
+                  <i class="fa-solid fa-envelope"></i>
+                  <input type="text" id="svc-email-inline" placeholder="Filter vehicles by email..." oninput="filterServiceVehicles('inline')" />
+                </div>
+              </div>
               <div class="form-group">
                 <label>Select Vehicle <span class="req">*</span></label>
                 <div class="input-wrap">
@@ -383,6 +390,10 @@
 
         <div class="history-filters">
           <div class="filter-group">
+            <label><i class="fa-solid fa-envelope"></i> Customer Email</label>
+            <input type="text" id="hist-filter-email" placeholder="email@example.com" oninput="renderHistory()" />
+          </div>
+          <div class="filter-group">
             <label><i class="fa-solid fa-car"></i> Filter by Vehicle</label>
             <select id="hist-filter-vehicle" onchange="renderHistory()">
               <option value="">All Vehicles</option>
@@ -425,8 +436,8 @@
       <section id="page-profile" class="page">
         <div class="section-header">
           <div>
-            <h2>My Profile</h2>
-            <p class="subtitle">Manage your account settings</p>
+            <h2>Garage Profile</h2>
+            <p class="subtitle">Manage your garage account settings</p>
           </div>
         </div>
 
@@ -535,6 +546,24 @@
       <div class="modal-body">
         <div class="form-row">
           <div class="form-group">
+            <label>Customer Name <span class="req">*</span></label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-user"></i>
+              <input type="text" id="v-customer-name" placeholder="John Doe" />
+            </div>
+            <span class="field-error" id="v-customer-name-err"></span>
+          </div>
+          <div class="form-group">
+            <label>Customer Email</label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-envelope"></i>
+              <input type="email" id="v-customer-email" placeholder="john@example.com" />
+            </div>
+            <span class="field-error" id="v-customer-email-err"></span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
             <label>Vehicle Name <span class="req">*</span></label>
             <div class="input-wrap">
               <i class="fa-solid fa-tag"></i>
@@ -606,6 +635,13 @@
     </div>
     <form id="add-service-form" novalidate>
       <div class="modal-body">
+        <div class="form-group">
+          <label>Customer Email</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-envelope"></i>
+            <input type="text" id="svc-email" placeholder="Filter vehicles by email..." oninput="filterServiceVehicles('modal')" />
+          </div>
+        </div>
         <div class="form-group">
           <label>Vehicle <span class="req">*</span></label>
           <div class="input-wrap">

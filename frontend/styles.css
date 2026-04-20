@@ -211,6 +211,15 @@ select option { background: var(--navy-mid); }
 .input-wrap select.error { border-color: var(--rose); }
 .input-wrap:focus-within > i:first-child { color: var(--amber); }
 
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--navy-light) inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 .field-error { font-size: 0.78rem; color: var(--rose); min-height: 16px; }
 .req { color: var(--rose); margin-left: 2px; }
 
@@ -879,7 +888,7 @@ select option { background: var(--navy-mid); }
 }
 .filter-group label i { color: var(--amber); font-size: 0.8rem; }
 .filter-group select,
-.filter-group input[type="date"] {
+.filter-group input {
   padding: 8px 12px;
   background: var(--navy-light);
   border: 1px solid var(--border);

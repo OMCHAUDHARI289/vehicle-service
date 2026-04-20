@@ -48,6 +48,8 @@ function normalizeUser(user) {
 function normalizeVehicle(vehicle) {
   return {
     id: vehicle.id,
+    customerName: vehicle.customer_name,
+    customerEmail: vehicle.customer_email,
     name: vehicle.name,
     model: vehicle.model,
     number: vehicle.number,
@@ -124,6 +126,8 @@ const API = {
   async addVehicle(vehicle) {
     try {
       const res = await axios.post(`${API_BASE_URL}/vehicles/add`, {
+        customer_name: vehicle.customerName,
+        customer_email: vehicle.customerEmail,
         name: vehicle.name,
         model: vehicle.model,
         number: vehicle.number,
@@ -290,8 +294,8 @@ function seedDemoData() {
   const fmt = d => d.toISOString().split('T')[0];
 
   state.vehicles = [
-    { id: 1, name: 'My Honda', model: 'Honda Civic 2021', number: 'ABC-1234', type: 'Sedan', date: '2021-03-15' },
-    { id: 2, name: 'Family SUV', model: 'Toyota Highlander 2020', number: 'XYZ-5678', type: 'SUV', date: '2020-07-22' },
+    { id: 1, customerName: 'Alex Mitchell', customerEmail: 'alex@example.com', name: 'Honda', model: 'Honda Civic 2021', number: 'ABC-1234', type: 'Sedan', date: '2021-03-15' },
+    { id: 2, customerName: 'Sarah Jenkins', customerEmail: 'sarah.j@example.com', name: 'Toyota', model: 'Toyota Highlander 2020', number: 'XYZ-5678', type: 'SUV', date: '2020-07-22' },
   ];
 
   const d1 = new Date(today); d1.setMonth(d1.getMonth() - 1);
@@ -317,6 +321,21 @@ function initApp() {
   renderServicesList();
   renderHistory();
   fillProfile();
+
+  // Search by Email Listener
+  const searchInput = document.getElementById('global-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      renderVehicles();
+      renderHistory();
+      
+      // Auto-navigate to Vehicles if they search to show results easily, unless on history
+      const activeNav = document.querySelector('.nav-item.active')?.dataset.page;
+      if (searchInput.value.trim() && activeNav !== 'history' && activeNav !== 'vehicles') {
+        navigate('vehicles');
+      }
+    });
+  }
 
   // Nav links
   document.querySelectorAll('.nav-item').forEach(link => {
@@ -403,21 +422,41 @@ window.hideModal = hideModal;
 window.closeModalOutside = closeModalOutside;
 
 // ── VEHICLE SELECTS ────────────────────────
-function updateVehicleSelects() {
-  const selects = ['svc-vehicle', 'svc-vehicle-inline', 'hist-filter-vehicle'];
+function updateVehicleSelects(filterEmail = '', targetPrefix = null) {
+  const selects = targetPrefix 
+    ? [targetPrefix === 'inline' ? 'svc-vehicle-inline' : 'svc-vehicle']
+    : ['svc-vehicle', 'svc-vehicle-inline', 'hist-filter-vehicle'];
+    
   selects.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const prev = el.value;
     // Keep first option
     while (el.options.length > 1) el.remove(1);
-    state.vehicles.forEach(v => {
-      const o = new Option(`${v.name} (${v.number})`, v.id);
+    
+    let filteredVehicles = [];
+    if (filterEmail) {
+      const query = filterEmail.toLowerCase();
+      filteredVehicles = state.vehicles.filter(v => v.customerEmail && v.customerEmail.toLowerCase().includes(query));
+    } else if (id === 'hist-filter-vehicle') {
+      // History filter dropdown should still show all vehicles by default
+      filteredVehicles = state.vehicles;
+    }
+
+    filteredVehicles.forEach(v => {
+      const o = new Option(`${v.customerName ? v.customerName + ' - ' : ''}${v.name} (${v.number})`, v.id);
       el.add(o);
     });
     el.value = prev;
   });
 }
+
+function filterServiceVehicles(type) {
+  const inputId = type === 'inline' ? 'svc-email-inline' : 'svc-email';
+  const val = document.getElementById(inputId).value.trim();
+  updateVehicleSelects(val, type);
+}
+window.filterServiceVehicles = filterServiceVehicles;
 
 // ── DASHBOARD ──────────────────────────────
 function renderDashboard() {
@@ -440,8 +479,8 @@ function renderDashboard() {
       <div class="dash-item">
         <div class="dash-item-icon bg-amber"><i class="${typeIcon(v.type)}"></i></div>
         <div class="dash-item-info">
-          <div class="dash-item-name">${esc(v.name)}</div>
-          <div class="dash-item-sub">${esc(v.model)}</div>
+          <div class="dash-item-name">${esc(v.customerName || v.name)}</div>
+          <div class="dash-item-sub">${esc(v.name)} - ${esc(v.model)}</div>
         </div>
         <div class="dash-item-meta">${esc(v.number)}</div>
       </div>`).join('');
@@ -459,7 +498,7 @@ function renderDashboard() {
           <div class="dash-item-icon bg-sky"><i class="fa-solid fa-wrench"></i></div>
           <div class="dash-item-info">
             <div class="dash-item-name">${esc(s.type)}</div>
-            <div class="dash-item-sub">${v ? esc(v.name) : 'Unknown'}</div>
+            <div class="dash-item-sub">${v ? esc(v.customerName || v.name) + ' (' + esc(v.number) + ')' : 'Unknown'}</div>
           </div>
           <div class="dash-item-meta">
             <div>₹${Number(s.cost).toFixed(0)}</div>
@@ -479,13 +518,25 @@ function renderDashboard() {
 function renderVehicles() {
   const grid  = document.getElementById('vehicles-grid');
   const empty = document.getElementById('vehicles-empty');
-  if (!state.vehicles.length) {
+  
+  const searchInput = document.getElementById('global-search');
+  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+  let data = state.vehicles;
+  if (query) {
+    data = data.filter(v => 
+      (v.customerEmail && v.customerEmail.toLowerCase().includes(query)) ||
+      (v.customerName && v.customerName.toLowerCase().includes(query))
+    );
+  }
+
+  if (!data.length) {
     grid.innerHTML = '';
     empty.classList.remove('hidden');
     return;
   }
   empty.classList.add('hidden');
-  grid.innerHTML = state.vehicles.map(v => vehicleCard(v)).join('');
+  grid.innerHTML = data.map(v => vehicleCard(v)).join('');
 }
 
 function vehicleCard(v) {
@@ -500,8 +551,11 @@ function vehicleCard(v) {
         <span class="vehicle-plate-badge">${esc(v.number)}</span>
       </div>
       <div class="vehicle-card-body">
-        <div class="vehicle-card-name">${esc(v.name)}</div>
-        <div class="vehicle-card-model">${esc(v.model)}</div>
+        <div class="vehicle-card-name">${esc(v.customerName || v.name)}</div>
+        <div class="vehicle-card-model" style="color:var(--text-faint); margin-bottom: 8px;">
+          ${v.customerEmail ? `<i class="fa-solid fa-envelope" style="font-size:0.7em;"></i> ${esc(v.customerEmail)}` : 'No Email Provided'}
+        </div>
+        <div class="vehicle-card-model"><strong>Vehicle:</strong> ${esc(v.name)} - ${esc(v.model)}</div>
         <div class="vehicle-card-meta">
           <span class="vm-tag"><i class="fa-solid fa-layer-group"></i>${esc(v.type)}</span>
           <span class="vm-tag"><i class="fa-solid fa-wrench"></i>${svcCount} service${svcCount !== 1 ? 's' : ''}</span>
@@ -517,6 +571,14 @@ function vehicleCard(v) {
 }
 
 function openServiceForVehicle(id) {
+  const v = state.vehicles.find(x => x.id == id);
+  if (v && v.customerEmail) {
+    document.getElementById('svc-email').value = v.customerEmail;
+    filterServiceVehicles('modal');
+  } else {
+    document.getElementById('svc-email').value = '';
+    filterServiceVehicles('modal');
+  }
   document.getElementById('svc-vehicle').value = id;
   showModal('add-service-modal');
 }
@@ -530,14 +592,17 @@ window.filterHistoryByVehicle = filterHistoryByVehicle;
 
 document.getElementById('add-vehicle-form').addEventListener('submit', async e => {
   e.preventDefault();
+  const customerName = document.getElementById('v-customer-name').value.trim();
+  const customerEmail = document.getElementById('v-customer-email').value.trim();
   const name   = document.getElementById('v-name').value.trim();
   const model  = document.getElementById('v-model').value.trim();
   const number = document.getElementById('v-number').value.trim();
   const type   = document.getElementById('v-type').value;
   const date   = document.getElementById('v-date').value;
   let valid    = true;
-  clearErrs('v-name-err','v-model-err','v-number-err','v-type-err');
+  clearErrs('v-customer-name-err','v-name-err','v-model-err','v-number-err','v-type-err');
 
+  if (!customerName) { setErr('v-customer-name-err', 'Customer name required'); valid = false; }
   if (!name)   { setErr('v-name-err',   'Vehicle name required'); valid = false; }
   if (!model)  { setErr('v-model-err',  'Model required');        valid = false; }
   if (!number) { setErr('v-number-err', 'Plate number required'); valid = false; }
@@ -547,7 +612,7 @@ document.getElementById('add-vehicle-form').addEventListener('submit', async e =
   const btn = e.submitter;
   setLoading(btn, true);
   try {
-    const v = await API.addVehicle({ name, model, number, type, date });
+    const v = await API.addVehicle({ customerName, customerEmail, name, model, number, type, date });
     state.vehicles.push(v);
     e.target.reset();
     hideModal('add-vehicle-modal');
@@ -696,7 +761,7 @@ function renderServicesList() {
         <div class="svc-log-icon"><i class="fa-solid fa-wrench"></i></div>
         <div class="svc-log-info">
           <div class="svc-log-type">${esc(s.type)}</div>
-          <div class="svc-log-vehicle"><i class="fa-solid fa-car" style="font-size:0.7rem;margin-right:4px"></i>${v ? esc(v.name) : 'Unknown'}</div>
+          <div class="svc-log-vehicle"><i class="fa-solid fa-user" style="font-size:0.7rem;margin-right:4px"></i>${v ? esc(v.customerName || v.name) + ' | ' + esc(v.number) : 'Unknown'}</div>
           ${s.notes ? `<div style="font-size:0.75rem;color:var(--text-faint);margin-top:3px">${esc(s.notes)}</div>` : ''}
         </div>
         <div class="svc-log-meta">
@@ -712,14 +777,28 @@ function renderHistory() {
   const filterVid  = document.getElementById('hist-filter-vehicle').value;
   const filterFrom = document.getElementById('hist-filter-from').value;
   const filterTo   = document.getElementById('hist-filter-to').value;
+  const filterEmail = document.getElementById('hist-filter-email').value.trim().toLowerCase();
   const tbody      = document.getElementById('history-tbody');
   const empty      = document.getElementById('history-empty');
   const tableWrap  = document.getElementById('history-table-wrap');
+
+  const searchInput = document.getElementById('global-search');
+  const query       = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
   let data = [...state.services].sort((a,b) => b.date.localeCompare(a.date));
   if (filterVid)  data = data.filter(s => s.vehicleId == filterVid);
   if (filterFrom) data = data.filter(s => s.date >= filterFrom);
   if (filterTo)   data = data.filter(s => s.date <= filterTo);
+
+  if (query || filterEmail) {
+    const activeQuery = query || filterEmail;
+    data = data.filter(s => {
+      const v = state.vehicles.find(x => x.id == s.vehicleId);
+      if (!v) return false;
+      return (v.customerEmail && v.customerEmail.toLowerCase().includes(activeQuery)) ||
+             (v.customerName && v.customerName.toLowerCase().includes(activeQuery));
+    });
+  }
 
   if (!data.length) {
     tableWrap.style.display = 'none';
@@ -747,8 +826,8 @@ function renderHistory() {
               <i class="${typeIcon(v?.type || 'other')}"></i>
             </div>
             <div>
-              <div style="font-weight:500">${v ? esc(v.name) : '<em style="color:var(--text-faint)">Deleted</em>'}</div>
-              ${v ? `<div style="font-size:0.75rem;color:var(--text-muted)">${esc(v.number)}</div>` : ''}
+              <div style="font-weight:500">${v ? esc(v.customerName || v.name) : '<em style="color:var(--text-faint)">Deleted</em>'}</div>
+              ${v ? `<div style="font-size:0.75rem;color:var(--text-muted)">${v.customerEmail ? esc(v.customerEmail) + ' • ' : ''}${esc(v.name)} - ${esc(v.number)}</div>` : ''}
             </div>
           </div>
         </td>
@@ -765,6 +844,9 @@ function clearHistoryFilters() {
   document.getElementById('hist-filter-vehicle').value = '';
   document.getElementById('hist-filter-from').value    = '';
   document.getElementById('hist-filter-to').value      = '';
+  if (document.getElementById('hist-filter-email')) {
+    document.getElementById('hist-filter-email').value = '';
+  }
   renderHistory();
 }
 window.clearHistoryFilters = clearHistoryFilters;
