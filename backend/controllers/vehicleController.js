@@ -7,14 +7,16 @@ import {
 
 export const createVehicle = async (req, res) => {
   try {
-    const { name, model, number, type, purchase_date } = req.body;
+    const { customer_name, customer_email, name, model, number, type, purchase_date } = req.body;
 
-    if (!name || !model || !number || !type) {
-      return res.status(400).json({ message: "Name, model, plate number and type are required" });
+    if (!customer_name || !name || !model || !number || !type) {
+      return res.status(400).json({ message: "Customer name, vehicle name, model, plate number and type are required" });
     }
 
     const vehicleId = await addVehicle({
       userId: req.user.id,
+      customerName: customer_name,
+      customerEmail: customer_email,
       name,
       model,
       number,

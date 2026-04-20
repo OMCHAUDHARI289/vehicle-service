@@ -1,12 +1,12 @@
 import pool from "../config/db.js";
 
 export const addVehicle = async (vehicle) => {
-  const { userId, name, model, number, type, purchaseDate } = vehicle;
+  const { userId, customerName, customerEmail, name, model, number, type, purchaseDate } = vehicle;
 
   const [result] = await pool.query(
-    `INSERT INTO vehicles (user_id, name, model, number, type, purchase_date)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [userId, name, model, number, type, purchaseDate]
+    `INSERT INTO vehicles (user_id, customer_name, customer_email, name, model, number, type, purchase_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [userId, customerName, customerEmail, name, model, number, type, purchaseDate]
   );
 
   return result.insertId;
